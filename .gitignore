@@ -1,0 +1,9 @@
+obj/
+bin/
+/built/
+/client/public/
+/.vscode
+/packages/
+/client/node_modules/
+/.fake/
+/paket-files/
