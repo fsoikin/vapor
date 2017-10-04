@@ -30,14 +30,14 @@ let files =
         Files.browseHome
 
 let getLog (proc, ticks) =
-    Successful.OK << toJson <| Process.log root proc (System.DateTime ticks)
+    Successful.OK << toJson <| Process.Ops.log root proc (System.DateTime ticks)
 
 let app =
     choose [
-        GET  >=> path "/api/list"          >=> request (fun _ -> Process.list root |> toJson |> Successful.OK)
+        GET  >=> path "/api/list"          >=> request (fun _ -> Process.Stats.list root |> toJson |> Successful.OK)
         GET  >=> pathScan "/api/log/%s/%d" getLog
-        POST >=> pathScan "/api/start/%s"  (Process.start root >> toJson >> Successful.OK)
-        POST >=> pathScan "/api/stop/%s"   (Process.stop root >> toJson >> Successful.OK)
+        POST >=> pathScan "/api/start/%s"  (Process.Ops.start root >> toJson >> Successful.OK)
+        POST >=> pathScan "/api/stop/%s"   (Process.Ops.stop root >> toJson >> Successful.OK)
 
         GET >=> choose
             [ path "/" >=> Files.file (homeDir + "/index.html")

@@ -6,7 +6,9 @@
   <ItemGroup>
     <Compile Include="Log.fs" />
     <Compile Include="Types.fs" />
-    <Compile Include="Process.fs" />
+    <Compile Include="Files.fs" />
+    <Compile Include="Process.Stats.fs" />
+    <Compile Include="Process.Ops.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

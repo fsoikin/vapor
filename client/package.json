@@ -4,6 +4,7 @@
   "description": "Simple Fable App",
   "scripts": {
     "build": "webpack",
+    "watch": "webpack --watch --progress --color",
     "start": "webpack-dev-server",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

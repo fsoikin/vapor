@@ -1,7 +1,13 @@
 module Vapor.Types
 
-type Process = { Name: string; Cmd: string; Pid: int option }
+type ProcessName = string
 
-let timeFormat = "yyyy-MM-dd HH:mm:ss.ff"
+type Pid = int
+
+type ProcessState = Stopped | Stopping | Running of Pid
+
+type Process = { Name: ProcessName; Cmd: string; State: ProcessState }
+
+let timeFormat = "yyyy-MM-dd HH:mm:ss.fff"
 
 let minTime = System.DateTime(2000,01,01)

@@ -1,15 +1,76 @@
 @import '../node_modules/bulma/bulma'
 
+.container
+    max-width: none !important
+    width: 100% !important
+
 .proc
     display: block
-    border: 2px solid gray
-    padding: 0.5em
 
-    > div
+    .thumb
+        width: 20px
         display: inline-block
+        content: '&nbsp;'
+        cursor: pointer
 
-.logLine
-    display: block
+        font-size: 90%;
+        color: white;
+        font-family: fontawesome
 
-    > div
-        display: inline-block
+        > div:before
+            position: relative;
+            top: 1px;
+            left: -0.5em
+            color: black;
+        > div:after
+            position: relative
+
+        > .visible:after, > .invisible:after
+            left: -1.6em
+        > .visible:before, > .visible:after
+            content: '\f06e'
+        > .invisible:before, > .invisible:after
+            content: '\f070'
+
+        > .toggling
+            position: relative
+            left: 2px
+        > .toggling:after
+            left: -1.5em
+        > .toggling:before, > .toggling:after
+            content: '\f252'
+
+        > .started, > .stopped
+            position: relative
+            left: 2px
+        > .started:after, > .stopped:after
+            left: -1.5em;
+        > .started:after
+            color: lightgreen
+        > .stopped:after
+            color: red
+        > .started:before, > .started:after, > .stopped:before, > .stopped:after
+            content: '\f011';
+
+
+    .name, .pid, .toggle-show
+        cursor: pointer
+
+.log-lines
+    font-family: courier
+
+    .log-line
+        display: block
+        white-space: nowrap
+
+        > td
+            padding-right: 7px
+            white-space: nowrap
+            vertical-align: middle
+
+        .time
+            font-size: 80%
+            background: #FAFAFA
+
+        .source
+            background: #F2F2F2
