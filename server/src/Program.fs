@@ -29,13 +29,18 @@ let files =
     else
         Files.browseHome
 
-let getLog (proc, ticks) =
-    Successful.OK << toJson <| Process.Ops.log root proc (System.DateTime ticks)
+let getLogs (procs:string, ticks) =
+    let logs =
+        [for proc in procs.Split ',' do
+            let log = Process.Ops.log root proc (System.DateTime ticks)
+            if not <| List.isEmpty log then yield proc, log
+        ]
+    Successful.OK << toJson <| logs
 
 let app =
     choose [
         GET  >=> path "/api/list"          >=> request (fun _ -> Process.Stats.list root |> toJson |> Successful.OK)
-        GET  >=> pathScan "/api/log/%s/%d" getLog
+        GET  >=> pathScan "/api/log/%s/%d" getLogs
         POST >=> pathScan "/api/start/%s"  (Process.Ops.start root >> toJson >> Successful.OK)
         POST >=> pathScan "/api/stop/%s"   (Process.Ops.stop root >> toJson >> Successful.OK)
 

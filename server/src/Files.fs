@@ -16,7 +16,7 @@ let procFile root proc kind =
 let maybeRead file =
     if File.Exists file then
         use str = new FileStream( file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite )
-        use rd = new StreamReader( str )
+        use rd = new StreamReader( str, System.Text.UTF8Encoding( false ) )
         Some <| rd.ReadToEnd()
     else
         None
@@ -26,7 +26,7 @@ let write file text = System.IO.File.WriteAllText( file, text )
 let append file (text: string) =
     use str = new FileStream( file, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite )
     str.Seek( 0L, SeekOrigin.End ) |> ignore
-    use wr = new StreamWriter( str, System.Text.Encoding.UTF8 )
+    use wr = new StreamWriter( str, System.Text.UTF8Encoding( false ) )
     wr.WriteLine text
 
 let maybeDelete file = try File.Delete file with _ -> ()

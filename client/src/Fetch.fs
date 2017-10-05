@@ -19,4 +19,5 @@ let inline private post url = fetch url [Method HttpMethod.POST]
 let list() : Types.Process list Promise = get "/list"
 let start proc : unit Promise = post ("/start/" + proc)
 let stop proc : unit Promise = post ("/stop/" + proc)
-let log proc (afterTime: System.DateTime) : (System.DateTime * string) list Promise = get ("/log/" + proc + "/" + string afterTime.Ticks)
+let logs procs (afterTime: System.DateTime) : (Types.ProcessName * (System.DateTime * string) list) list Promise =
+    get ("/log/" + (FSharp.Core.String.concat "," procs) + "/" + string afterTime.Ticks)

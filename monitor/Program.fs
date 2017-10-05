@@ -9,8 +9,6 @@ module OS =
     [<System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)>]
     extern bool GenerateConsoleCtrlEvent(int sigevent, int dwProcessGroupId);
 
-    System.Console.CancelKeyPress.AddHandler ( fun _ (e: System.ConsoleCancelEventArgs) -> e.Cancel <- true )
-
     let killProcess (p: P) =
         GenerateConsoleCtrlEvent( 0, p.Id ) |> ignore
 
@@ -20,6 +18,9 @@ let run root proc =
 
     let needToStop() = System.IO.File.Exists stopFile
     let log line = Files.append logFile (sprintf "%s: %s" (DateTime.Now.ToString Types.timeFormat) line)
+
+    let mutable ignoreCancel = true
+    System.Console.CancelKeyPress.AddHandler ( fun _ (e: System.ConsoleCancelEventArgs) -> log "Ignoring Ctrl+C"; e.Cancel <- ignoreCancel; ignoreCancel <- false )
 
     let rec pipeOutput (p: P) (stream: IO.StreamReader) =
         async {
@@ -35,6 +36,8 @@ let run root proc =
             if needToStop() then
                 log ("Stopping " + proc)
                 OS.killProcess p
+            elif p.HasExited then
+                log ("Crashed: " + proc)
             else
                 return! waitForStopSignal p
         }
@@ -59,7 +62,7 @@ let run root proc =
         |> Async.RunSynchronously
         |> ignore
 
-        log ("Stopped " + (if needToStop() then "" else "by itself: ") + proc)
+        log ("Stopped " + proc)
         Files.maybeDelete pidFile
     )
 

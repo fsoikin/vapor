@@ -30,8 +30,7 @@ type Message =
     | ProcsFetched of Types.Process list
     | ToggleShowLog of Proc
     | FetchAllLogs
-    | FetchLog of Proc
-    | LogFetched of Proc * (System.DateTime * string) list
+    | LogsFetched of (Types.ProcessName * (System.DateTime * string) list) list
     | Toggle of Proc
     | Err of System.Exception
 
@@ -74,16 +73,32 @@ let logEntryView e =
           td [ ClassName "text" ]   [ str e.Line ]
         ]
 
+let rec mergeSort cmp xss = seq {
+    let xx =
+        xss
+        |> Seq.choose (function
+            | x::rest -> Some (x, rest)
+            | [] -> None)
+        |> Seq.indexed
+        |> Seq.toList
+
+    if not <| List.isEmpty xx then
+        let (minIdx, (minItem, _)) = xx |> Seq.minBy (snd >> fst >> cmp)
+        yield minItem
+        yield! mergeSort cmp (xx |> Seq.map (fun (idx,(x,rest)) -> if idx = minIdx then rest else (x::rest)))
+}
+
 let view model dispatch =
     let tuple x y = x, y
     let mergedLogs =
-        [for pIdx, p in model.Procs |> List.mapi tuple do
-            if showLog model p then
-                for lIdx, (t, l) in p.Log |> List.mapi tuple ->
-                    lIdx, { SourceProc = p; ProcIndex = pIdx; Time = t; Line = l } ]
-        |> List.sortByDescending (fun (i, e) -> e.Time, i)
-        |> List.map snd
-        |> List.truncate 200
+        model.Procs
+        |> Seq.indexed
+        |> Seq.filter (snd >> showLog model)
+        |> Seq.map (fun (pIdx, p) -> [for t, l in p.Log -> { SourceProc = p; ProcIndex = pIdx; Time = t; Line = l } ])
+        |> mergeSort (fun x -> -x.Time.Ticks)
+        |> Seq.map logEntryView
+        |> Seq.truncate 200
+        |> Seq.toList
 
     div
         []
@@ -99,7 +114,7 @@ let view model dispatch =
                           [ table []
                                 [ tbody
                                     [ ClassName "log-lines tile is-vertical" ]
-                                    (mergedLogs |> List.map logEntryView)
+                                    mergedLogs
                                 ]
                           ]
                     ]
@@ -136,15 +151,29 @@ let mergeProcs existing incoming =
         | None -> { Process = i; State = state; LastLogTimestamp = Types.minTime; Log = [] }
     ]
 
+let mergeLog existing incoming =
+    (List.rev incoming) @ existing
+
+let safeMax defaultValue s =
+    if Seq.isEmpty s then defaultValue
+    else Seq.max s
+
+let mergeLogs model ls =
+    let ps =
+        [for p in model.Procs ->
+            match ls |> List.tryFind (fst >> ((=) p.Process.Name)) with
+            | Some (_, logs) ->
+                let newLog = mergeLog p.Log logs
+                { p with
+                    Log = newLog
+                    LastLogTimestamp = newLog |> List.tryHead |> Option.map fst |> Option.defaultValue p.LastLogTimestamp }
+            | None ->
+                p
+        ]
+    { model with Procs = ps }
+
 let updateProc model newProc =
     { model with Procs = [for p in model.Procs -> if p.Process.Name = newProc.Process.Name then newProc else p] }
-
-let mergeLog existing incoming =
-    match incoming with
-    | [] ->
-        existing
-    | (time,i)::_ ->
-        (existing |> List.takeWhile (fun (t,_) -> t < time)) @ incoming
 
 let toggleProc model proc makeRequest =
     updateProc model { proc with State = Toggling }, Cmd.ofPromise makeRequest proc.Process.Name (fun _ -> FetchProcs) Err
@@ -164,16 +193,13 @@ let update msg model =
         Browser.localStorage.setItem( hideLogKey, String.concat "," newHideLog )
         { model with HideLog = newHideLog }, Cmd.none
     | FetchAllLogs ->
-        model, model.Procs |> List.map (FetchLog >> Cmd.ofMsg) |> Cmd.batch
-    | FetchLog proc ->
-        model, Cmd.ofPromise (Fetch.log proc.Process.Name) proc.LastLogTimestamp (fun ls -> LogFetched (proc, ls)) Err
-    | LogFetched (proc, logs) ->
-        let newLogs = mergeLog proc.Log logs
-        let latest = if List.isEmpty logs then Types.minTime else logs |> List.map fst |> List.max
-        Fable.Import.JS.console.log (string latest)
+        let latestTimestamp = seq { for p in model.Procs -> p.LastLogTimestamp } |> safeMax Types.minTime
+        let names = [for p in model.Procs -> p.Process.Name]
+        model, Cmd.ofPromise (Fetch.logs names) latestTimestamp LogsFetched Err
+    | LogsFetched ls ->
         // hack:
-        let cmd = if logs |> Seq.exists (fun (_, l) -> l.Contains "Stopped") then Cmd.ofMsg FetchProcs else Cmd.none
-        updateProc model { proc with Log = newLogs; LastLogTimestamp = latest }, cmd
+        let cmd = if ls |> Seq.collect snd |> Seq.exists (fun (_, l) -> l.Contains "Stopped") then Cmd.ofMsg FetchProcs else Cmd.none
+        mergeLogs model ls, cmd
     | Toggle proc ->
         match proc.State with
         | Running -> toggleProc model proc Fetch.stop
@@ -190,7 +216,4 @@ open Elmish.Debug
 // App
 Program.mkProgram init update view
 |> Program.withReact "elmish-app"
-#if DEBUG
-|> Program.withDebugger
-#endif
 |> Program.run
