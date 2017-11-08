@@ -40,6 +40,7 @@ let getLogs (procs:string, ticks) =
 let app =
     choose [
         GET  >=> path "/api/list"          >=> request (fun _ -> Process.Stats.list root |> toJson |> Successful.OK)
+        POST >=> path "/api/gc"            >=> request (fun _ -> Process.Ops.collectGarbage root |> toJson |> Successful.OK)
         GET  >=> pathScan "/api/log/%s/%d" getLogs
         POST >=> pathScan "/api/start/%s"  (Process.Ops.start root >> toJson >> Successful.OK)
         POST >=> pathScan "/api/stop/%s"   (Process.Ops.stop root >> toJson >> Successful.OK)

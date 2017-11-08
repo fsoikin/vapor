@@ -24,7 +24,7 @@ module.exports = {
   devtool: "source-map",
   entry: resolve('./src/client.fsproj'),
   output: {
-    filename: 'bundle.js',
+    filename: 'bundle.min.js',
     path: resolve('./public'),
   },
   resolve: {

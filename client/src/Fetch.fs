@@ -17,6 +17,7 @@ let inline private get url = fetch url [Method HttpMethod.GET]
 let inline private post url = fetch url [Method HttpMethod.POST]
 
 let list() : Types.Process list Promise = get "/list"
+let collectGarbage() : unit Promise = post "/gc"
 let start proc : unit Promise = post ("/start/" + proc)
 let stop proc : unit Promise = post ("/stop/" + proc)
 let logs procs (afterTime: System.DateTime) : (Types.ProcessName * (System.DateTime * string) list) list Promise =

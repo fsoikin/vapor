@@ -34,6 +34,8 @@ type Message =
     | Toggle of Proc
     | Err of System.Exception
 
+let minTime = System.DateTime.Now.AddDays -1.
+
 let procColor idx =
     let idx = idx + 1
     let iff d = if idx &&& d = d then "aa" else "00"
@@ -125,7 +127,7 @@ let view model dispatch =
 let poll dispatch =
     Fable.Import.Browser.window.setInterval(
         box (fun() -> dispatch FetchAllLogs),
-        box 5000
+        box 1000
     )
     |> ignore
 
@@ -148,7 +150,7 @@ let mergeProcs existing incoming =
 
         match existing |> List.tryFind (fun x -> x.Process.Name = i.Name) with
         | Some ex -> { ex with Process = i; State = state }
-        | None -> { Process = i; State = state; LastLogTimestamp = Types.minTime; Log = [] }
+        | None -> { Process = i; State = state; LastLogTimestamp = minTime; Log = [] }
     ]
 
 let mergeLog existing incoming =
@@ -212,6 +214,9 @@ let update msg model =
 
 open Elmish.React
 open Elmish.Debug
+open Fable.PowerPack
+
+Fetch.collectGarbage() |> Promise.start
 
 // App
 Program.mkProgram init update view

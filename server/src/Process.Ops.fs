@@ -67,3 +67,16 @@ let log root proc afterTime =
     |> Seq.map splitTime
     |> Seq.filter (fun (t,s) -> t > afterTime)
     |> List.ofSeq
+
+let private isStopped pid =
+    try isNull <| System.Diagnostics.Process.GetProcessById pid
+    with _ -> true
+
+let collectGarbage root =
+    for p in list root do
+        match p.State with
+        | Running pid when isStopped pid ->
+            Log.log "Purging PID file for '%s' #%d, because it wasn't running." p.Name pid
+            maybeDelete (procFile root p.Name Pid)
+        | _ ->
+            ()
