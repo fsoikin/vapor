@@ -1,13 +1,18 @@
 ﻿module Vapor.Monitor
 open System
 
-type P = System.Diagnostics.Process
-type SI = System.Diagnostics.ProcessStartInfo
+type P = Diagnostics.Process
+type SI = Diagnostics.ProcessStartInfo
 
 module OS =
 
-    [<System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)>]
-    extern bool GenerateConsoleCtrlEvent(int sigevent, int dwProcessGroupId);
+    [<AutoOpen>]
+    module private Private =
+        [<Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)>]
+        extern bool GenerateConsoleCtrlEvent(int sigevent, int dwProcessGroupId);
+
+        [<Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)>]
+        extern bool AllocConsole();
 
     let killProcess log (p: P) =
         let rec loop() = async {
@@ -17,14 +22,18 @@ module OS =
         }
         Async.Start <| loop()
 
+    let initConsole = AllocConsole >> ignore
+
+
 let run root proc =
     let file = Files.procFile root proc
     let pidFile, stopFile, logFile = file Files.Pid, file Files.Stop, file Files.Log
 
-    let needToStop() = System.IO.File.Exists stopFile
+    let needToStop() = IO.File.Exists stopFile
     let log line = Files.append logFile (sprintf "%s: %s" (DateTime.Now.ToString Types.timeFormat) line)
 
-    System.Console.CancelKeyPress.AddHandler ( fun _ (e: System.ConsoleCancelEventArgs) -> e.Cancel <- true )
+    Console.CancelKeyPress.AddHandler ( fun _ (e: System.ConsoleCancelEventArgs) -> e.Cancel <- true )
+    OS.initConsole()
 
     let rec pipeOutput (p: P) (stream: IO.StreamReader) =
         async {
