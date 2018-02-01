@@ -2,10 +2,9 @@ language: csharp
 mono: alpha
 dotnet: 2.1.4
 
-matrix:
-  - include:
-    - os: osx
-    - os: linux
+os:
+  - osx
+  - linux
 
 before_script:
  - chmod +x ./build.sh
