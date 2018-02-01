@@ -2,11 +2,12 @@ language: csharp
 mono: alpha
 dotnet: 2.1.4
 
-os:
-  - os: osx
-    before_install: brew install yarn
+matrix:
+  include:
+    - os: osx
+      before_install: brew install yarn
 
-  - linux
+    - os: linux
 
 before_script:
  - chmod +x ./build.sh
