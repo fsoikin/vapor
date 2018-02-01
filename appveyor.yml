@@ -3,6 +3,9 @@ version: 1.0.{build}
 pull_requests:
   do_not_increment_build_number: true
 
+install:
+  - ps: Install-Product node 9
+
 branches:
   only:
   - master
