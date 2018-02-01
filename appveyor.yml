@@ -1,0 +1,15 @@
+version: 1.0.{build}
+
+pull_requests:
+  do_not_increment_build_number: true
+
+branches:
+  only:
+  - master
+  - deploy
+
+skip_tags: true
+test: off
+
+build_script:
+  - ps: .\build.ps1 CIBuild BuildNumber=$env:APPVEYOR_BUILD_NUMBER Branch=$env:APPVEYOR_REPO_BRANCH PullRequest=$(if (-not $env:APPVEYOR_PULL_REQUEST_NUMBER) {'false'} else {'true'})
