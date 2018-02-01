@@ -4,5 +4,4 @@ Fable.PowerPack
 Fable.Elmish.React
 Fable.Elmish.Browser
 Fable.Elmish.Debugger
-FSharp.NET.Sdk
 dotnet-fable
