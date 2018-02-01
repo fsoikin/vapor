@@ -1,13 +1,7 @@
 language: csharp
 
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      sudo: required
-
 before_script:
  - chmod +x ./build.sh
 
-script: 
+script:
   - ./build.sh CIBuild BuildNumber=$TRAVIS_BUILD_NUMBER PullRequest=TRAVIS_PULL_REQUEST Branch=TRAVIS_BRANCH
