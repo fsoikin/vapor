@@ -1,13 +1,11 @@
 module Vapor.App
 
 open Elmish
-open Elmish.Browser.Navigation
-open Elmish.Browser.UrlParser
 open Fable.Core
-open Fable.Core.JsInterop
+open JsInterop
 open Fable.Import
 open Fable.Helpers.React
-open Fable.Helpers.React.Props
+open Props
 
 importAll "../sass/main.sass"
 
@@ -91,7 +89,6 @@ let rec mergeSort cmp xss = seq {
 }
 
 let view model dispatch =
-    let tuple x y = x, y
     let mergedLogs =
         model.Procs
         |> Seq.indexed
@@ -110,10 +107,10 @@ let view model dispatch =
                 [ ClassName "container" ]
                 [ div
                     [ ClassName "tile is-ancestor" ]
-                    [ div [ ClassName "tile is-vertical is-1" ]
+                    [ div [ ClassName "tile is-vertical is-1"; Style [Position "relative"] ]
                           (model.Procs |> List.mapi (procView model dispatch))
-                      div [ ClassName "tile" ]
-                          [ table []
+                      div [ ClassName "tile is-vertical is-11" ]
+                          [ table [Style [Width "100%"]]
                                 [ tbody
                                     [ ClassName "log-lines tile is-vertical" ]
                                     mergedLogs

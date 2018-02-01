@@ -14,7 +14,7 @@ module OS =
         [<Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)>]
         extern bool AllocConsole();
 
-    let killProcess log (p: P) =
+    let killProcess (p: P) =
         let rec loop() = async {
             GenerateConsoleCtrlEvent( 0, p.Id ) |> ignore
             do! Async.Sleep 100
@@ -48,7 +48,7 @@ let run root proc =
             do! Async.Sleep 500
             if needToStop() then
                 log ("Stopping " + proc)
-                OS.killProcess log p
+                OS.killProcess p
             elif p.HasExited then
                 log ("Crashed: " + proc)
             else
