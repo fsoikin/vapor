@@ -124,7 +124,7 @@ let view model dispatch =
 let poll dispatch =
     Fable.Import.Browser.window.setInterval(
         box (fun() -> dispatch FetchAllLogs),
-        box 1000
+        1000
     )
     |> ignore
 
