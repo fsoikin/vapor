@@ -25,8 +25,8 @@ module OS =
     let initConsole = AllocConsole >> ignore
 
 
-let run root proc =
-    let file = Files.procFile root proc
+let run (cfg: Process.Stats.Config) proc =
+    let file = Files.procFile cfg.root proc
     let pidFile, stopFile, logFile = file Files.Pid, file Files.Stop, file Files.Log
 
     let needToStop() = IO.File.Exists stopFile
@@ -55,12 +55,18 @@ let run root proc =
                 return! waitForStopSignal p
         }
 
-    Process.Stats.find root proc
+    let shellFile, shellCmd =
+        match cfg.shell.Split( [|' '|], 2 ) with
+        | [|cmd; opt|] -> cmd, opt
+        | [|cmd|] -> cmd, ""
+        | _ -> cfg.shell, ""
+
+    Process.Stats.find cfg proc
     |> Option.iter (fun pr ->
         log ("Starting " + proc)
 
         let p =
-            SI( "powershell", sprintf """-Command "%s" """ pr.Cmd,
+            SI( shellFile, sprintf """%s "%s" """ shellCmd (pr.Cmd.Replace("\\","\\\\")),
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true )
@@ -82,7 +88,7 @@ let run root proc =
 [<EntryPoint>]
 let main argv =
     match argv with
-    | [|root; proc|] -> run root proc
+    | [|root; shell; proc|] -> run { root = root; shell = shell; debug = false } proc
     | _ -> printfn "Bad args: %A" argv
 
     0

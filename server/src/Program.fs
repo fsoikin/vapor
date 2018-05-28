@@ -23,19 +23,19 @@ let getLogs root (procs:string, ticks) =
         ]
     Successful.OK << toJson <| logs
 
-let app root debug =
+let app (cfg: Process.Stats.Config) =
     let files =
-        if debug then
+        if cfg.debug then
             Writers.setHeader "Cache-Control" "max-age=1" >=> context (fun _ -> Files.browseHome)
         else
             Files.browseHome
 
     choose [
-        GET  >=> path "/api/list"          >=> request (fun _ -> Process.Stats.list root |> toJson |> Successful.OK)
-        POST >=> path "/api/gc"            >=> request (fun _ -> Process.Ops.collectGarbage root |> toJson |> Successful.OK)
-        GET  >=> pathScan "/api/log/%s/%d" (getLogs root)
-        POST >=> pathScan "/api/start/%s"  (Process.Ops.start debug root >> toJson >> Successful.OK)
-        POST >=> pathScan "/api/stop/%s"   (Process.Ops.stop root >> toJson >> Successful.OK)
+        GET  >=> path "/api/list"          >=> request (fun _ -> Process.Stats.list cfg |> toJson |> Successful.OK)
+        POST >=> path "/api/gc"            >=> request (fun _ -> Process.Ops.collectGarbage cfg |> toJson |> Successful.OK)
+        GET  >=> pathScan "/api/log/%s/%d" (getLogs cfg)
+        POST >=> pathScan "/api/start/%s"  (Process.Ops.start cfg >> toJson >> Successful.OK)
+        POST >=> pathScan "/api/stop/%s"   (Process.Ops.stop cfg >> toJson >> Successful.OK)
 
         GET >=> choose
             [ path "/" >=> Files.file (homeDir + "/index.html")
@@ -44,15 +44,15 @@ let app root debug =
         RequestErrors.NOT_FOUND "Not Found"
     ]
 
-let run root port debug =
+let run (cfg: Process.Stats.Config) port =
     printfn "HomeDir = %s" homeDir
-    printfn "Root = %s" root
+    printfn "Root = %s" cfg.root
 
-    if not (System.IO.Directory.Exists root) then
-        printfn "Directory '%s' doesn't exist" root
+    if not (System.IO.Directory.Exists cfg.root) then
+        printfn "Directory '%s' doesn't exist" cfg.root
         1
     else
-        app root debug
+        app cfg
         |> startWebServer
             { defaultConfig with
                 homeFolder = Some homeDir
@@ -71,21 +71,36 @@ module Options =
     type Options =
         | [<ExactlyOnce>] Root of path:string
         | [<AltCommandLine "-p"; Unique>] Port of port:System.UInt16
+        | [<Unique>] Shell of shell:string
         | [<AltCommandLine "-d"; Unique>] Debug
     with interface IArgParserTemplate with
             member s.Usage =
                 match s with
                 | Root _ -> "Root directory, where the `procs` file is located"
                 | Port _ -> "Port on which to listen (if not specified will be chosen automatically)"
+                | Shell _ -> "Shell to use for execution together with its option for executing a command, e.g. `bash -c`.\nDefault is `bash` on Unix and `powershell` on Windows."
                 | Debug -> "Debug mode"
 
     let parser = ArgumentParser.Create<Options>(programName = "vapor")
+
+
+let guessShell =
+    match System.Environment.OSVersion.Platform with
+    | System.PlatformID.Unix | System.PlatformID.MacOSX ->
+        "bash -c"
+    | _ (* Assuming Windows *) ->
+        "powershell -Command"
 
 
 [<EntryPoint>]
 let main argv =
     try
         let opts = Options.parser.Parse argv
-        run (opts.GetResult <@Root@>) (opts.TryGetResult <@Port@>) (opts.Contains <@Debug@>)
+        let cfg : Process.Stats.Config = {
+            root = opts.GetResult <@Root@>
+            debug = opts.Contains <@Debug@>
+            shell = Option.defaultValue guessShell <| opts.TryGetResult <@Shell@>
+        }
+        run cfg (opts.TryGetResult <@Port@>)
     with
         | :? Argu.ArguParseException as e -> printfn "%s" e.Message; 1

@@ -15,22 +15,22 @@ let writeMonitorFile() =
         File.Copy( f, Path.Combine(path, Path.GetFileName f) )
     Path.Combine( path, "monitor.dll" )
 
-let start debug root proc =
-    find root proc
+let start cfg proc =
+    find cfg proc
     |> Option.filter (fun p -> p.State = Stopped)
     |> Option.bind (fun p ->
         Log.log "Starting process %s ..." proc
-        let pidFile = procFile root proc Pid
+        let pidFile = procFile cfg.root proc Pid
         let runFile = writeMonitorFile()
 
-        let args = sprintf """"%s" "%s" "%s" """ runFile (root.Replace("\\", "/")) proc
+        let args = sprintf """"%s" "%s" "%s" "%s" """ runFile (cfg.root.Replace("\\", "/")) (cfg.shell.Replace("\\", "\\\\")) proc
         Log.log "%s" args
 
         let p =
             System.Diagnostics.ProcessStartInfo( "dotnet", args, CreateNoWindow=true, UseShellExecute=false, RedirectStandardOutput=true )
             |> System.Diagnostics.Process.Start
 
-        if debug then
+        if cfg.debug then
             Async.Start <| async {
                 while not p.HasExited do
                     let! line = p.StandardOutput.ReadLineAsync() |> Async.AwaitTask
@@ -45,9 +45,9 @@ let start debug root proc =
         pid
     )
 
-let stop root proc =
-    let stopFile = procFile root proc Stop
-    let pidFile = procFile root proc Pid
+let stop cfg proc =
+    let stopFile = procFile cfg.root proc Stop
+    let pidFile = procFile cfg.root proc Pid
 
     maybeRead pidFile |> Option.iter (fun pid ->
         Log.log "Attempting to stop process %s with PID=%s ..." proc pid
@@ -60,7 +60,7 @@ let stop root proc =
 
     maybeDelete stopFile
 
-let log root proc afterTime =
+let log cfg proc afterTime =
     let splitTime (s: string) =
         Some()
         |> Option.filter (fun _ -> s.Length > timeFormat.Length )
@@ -69,7 +69,7 @@ let log root proc afterTime =
         |> Option.defaultValue (minTime, s)
 
     // TODO: refine this to not load the whole file
-    maybeRead (procFile root proc Log) |> Option.defaultValue ""
+    maybeRead (procFile cfg.root proc Log) |> Option.defaultValue ""
     |> (fun s -> s.Split '\n')
     |> Seq.map splitTime
     |> Seq.filter (fun (t,s) -> t > afterTime)
@@ -79,11 +79,11 @@ let private isStopped pid =
     try isNull <| System.Diagnostics.Process.GetProcessById pid
     with _ -> true
 
-let collectGarbage root =
-    for p in list root do
+let collectGarbage cfg =
+    for p in list cfg do
         match p.State with
         | Running pid when isStopped pid ->
             Log.log "Purging PID file for '%s' #%d, because it wasn't running." p.Name pid
-            maybeDelete (procFile root p.Name Pid)
+            maybeDelete (procFile cfg.root p.Name Pid)
         | _ ->
             ()
