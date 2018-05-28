@@ -15,7 +15,7 @@ let writeMonitorFile() =
         File.Copy( f, Path.Combine(path, Path.GetFileName f) )
     Path.Combine( path, "monitor.dll" )
 
-let start root proc =
+let start debug root proc =
     find root proc
     |> Option.filter (fun p -> p.State = Stopped)
     |> Option.bind (fun p ->
@@ -23,12 +23,19 @@ let start root proc =
         let pidFile = procFile root proc Pid
         let runFile = writeMonitorFile()
 
-        let args = sprintf """"%s" "%s" "%s" """ runFile root proc
+        let args = sprintf """"%s" "%s" "%s" """ runFile (root.Replace("\\", "/")) proc
         Log.log "%s" args
 
-        System.Diagnostics.ProcessStartInfo( "dotnet", args, CreateNoWindow=true, UseShellExecute=false )
-        |> System.Diagnostics.Process.Start
-        |> ignore
+        let p =
+            System.Diagnostics.ProcessStartInfo( "dotnet", args, CreateNoWindow=true, UseShellExecute=false, RedirectStandardOutput=true )
+            |> System.Diagnostics.Process.Start
+
+        if debug then
+            Async.Start <| async {
+                while not p.HasExited do
+                    let! line = p.StandardOutput.ReadLineAsync() |> Async.AwaitTask
+                    Log.log "Monitor says: %s" line
+            }
 
         let pid = activeWait (fun() -> maybeRead pidFile)
         match pid with

@@ -3,7 +3,6 @@
 open Suave
 open Suave.Filters
 open Suave.Operators
-open Argu
 
 [<AutoOpen>]
 module Json =
@@ -35,7 +34,7 @@ let app root debug =
         GET  >=> path "/api/list"          >=> request (fun _ -> Process.Stats.list root |> toJson |> Successful.OK)
         POST >=> path "/api/gc"            >=> request (fun _ -> Process.Ops.collectGarbage root |> toJson |> Successful.OK)
         GET  >=> pathScan "/api/log/%s/%d" (getLogs root)
-        POST >=> pathScan "/api/start/%s"  (Process.Ops.start root >> toJson >> Successful.OK)
+        POST >=> pathScan "/api/start/%s"  (Process.Ops.start debug root >> toJson >> Successful.OK)
         POST >=> pathScan "/api/stop/%s"   (Process.Ops.stop root >> toJson >> Successful.OK)
 
         GET >=> choose
@@ -89,4 +88,4 @@ let main argv =
         let opts = Options.parser.Parse argv
         run (opts.GetResult <@Root@>) (opts.TryGetResult <@Port@>) (opts.Contains <@Debug@>)
     with
-        | :? ArguParseException as e -> printfn "%s" e.Message; 1
+        | :? Argu.ArguParseException as e -> printfn "%s" e.Message; 1

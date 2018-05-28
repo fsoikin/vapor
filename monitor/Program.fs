@@ -83,6 +83,6 @@ let run root proc =
 let main argv =
     match argv with
     | [|root; proc|] -> run root proc
-    | _ -> printfn "Bad args"
+    | _ -> printfn "Bad args: %A" argv
 
     0
