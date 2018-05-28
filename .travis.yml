@@ -1,6 +1,7 @@
 language: csharp
 mono: alpha
 dotnet: 2.1.4
+node_js: lts/*
 
 matrix:
   include:
