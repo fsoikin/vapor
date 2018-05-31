@@ -5,24 +5,36 @@ type P = Diagnostics.Process
 type SI = Diagnostics.ProcessStartInfo
 
 module OS =
+    open System.Runtime.InteropServices
 
-    [<AutoOpen>]
-    module private Private =
-        [<Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)>]
-        extern bool GenerateConsoleCtrlEvent(int sigevent, int dwProcessGroupId);
+    module private Windows =
+        [<DllImport("kernel32.dll", SetLastError=true)>] extern bool GenerateConsoleCtrlEvent(int sigevent, int dwProcessGroupId);
+        [<DllImport("kernel32.dll", SetLastError=true)>] extern bool AllocConsole();
 
-        [<Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)>]
-        extern bool AllocConsole();
+        let _kill pid = GenerateConsoleCtrlEvent(0, pid) |> ignore
+        let initConsole = AllocConsole >> ignore
+
+    module private Unix =
+        [<DllImport ("libc", SetLastError=true)>] extern unit kill (int pid, int signal);
+
+        let _kill pid = kill(pid, 2 (* SIGINT *))
+        let initConsole () = ()
+
+
+    let _kill, initConsole =
+        match System.Environment.OSVersion.Platform with
+        | System.PlatformID.Unix | System.PlatformID.MacOSX ->
+            Unix._kill, Unix.initConsole
+        | _ (* Assuming Windows *) ->
+            Windows._kill, Windows.initConsole
 
     let killProcess (p: P) =
         let rec loop() = async {
-            GenerateConsoleCtrlEvent( 0, p.Id ) |> ignore
+            _kill p.Id
             do! Async.Sleep 100
             return! loop()
         }
         Async.Start <| loop()
-
-    let initConsole = AllocConsole >> ignore
 
 
 let run (cfg: Process.Stats.Config) proc =
