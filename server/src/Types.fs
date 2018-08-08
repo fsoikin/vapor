@@ -6,7 +6,7 @@ type Pid = int
 
 type ProcessState = Stopped | Stopping | Running of Pid
 
-type Process = { Name: ProcessName; Cmd: string; State: ProcessState }
+type Process = { Name: ProcessName; Cmd: string; Kill: string option; State: ProcessState }
 
 let timeFormat = "yyyy-MM-dd HH:mm:ss.fff"
 

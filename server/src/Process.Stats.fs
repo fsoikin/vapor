@@ -16,8 +16,12 @@ let state cfg proc =
 let list cfg =
     [for proc in File.ReadAllLines (Path.Combine(cfg.root, "procs")) do
         let ps = proc.Split([|':'|], 2)
-        if ps.Length = 2
-        then yield { Name = ps.[0]; Cmd = ps.[1]; State = state cfg ps.[0] }
+        if ps.Length = 2 then
+            let (run, kill) =
+                let killIdx = ps.[1].IndexOf( "kill:" )
+                if killIdx > 0 then (ps.[1].Substring(0, killIdx), Some (ps.[1].Substring(killIdx+5)))
+                else (ps.[1], None)
+            yield { Name = ps.[0]; Cmd = run; Kill = kill; State = state cfg ps.[0] }
     ]
 
 let find cfg proc = list cfg |> List.tryFind (fun p -> p.Name = proc)

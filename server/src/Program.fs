@@ -101,6 +101,7 @@ let main argv =
             debug = opts.Contains <@Debug@>
             shell = Option.defaultValue guessShell <| opts.TryGetResult <@Shell@>
         }
+        printfn "%A" (Process.Stats.list cfg)
         run cfg (opts.TryGetResult <@Port@>)
     with
         | :? Argu.ArguParseException as e -> printfn "%s" e.Message; 1

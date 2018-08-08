@@ -55,40 +55,44 @@ let run (cfg: Process.Stats.Config) proc =
                 return! pipeOutput p stream
         }
 
-    let rec waitForStopSignal (p: P) =
-        async {
-            do! Async.Sleep 500
-            if needToStop() then
-                log ("Stopping " + proc)
-                OS.killProcess p
-            elif p.HasExited then
-                log ("Crashed: " + proc)
-            else
-                return! waitForStopSignal p
-        }
-
     let shellFile, shellCmd =
         match cfg.shell.Split( [|' '|], 2 ) with
         | [|cmd; opt|] -> cmd, opt
         | [|cmd|] -> cmd, ""
         | _ -> cfg.shell, ""
 
+    let si (cmd: string) = SI( shellFile, sprintf """%s "%s" """ shellCmd (cmd.Replace("\\","\\\\")) )
+
+    let rec waitForStopSignal kill (p: P) =
+        async {
+            do! Async.Sleep 500
+            if needToStop() then
+                log ("Stopping " + proc)
+                match kill with
+                | None -> OS.killProcess p
+                | Some k -> ignore <| P.Start (si k)
+            elif p.HasExited then
+                log ("Crashed: " + proc)
+            else
+                return! waitForStopSignal kill p
+        }
+
     Process.Stats.find cfg proc
     |> Option.iter (fun pr ->
         log ("Starting " + proc)
 
         let p =
-            SI( shellFile, sprintf """%s "%s" """ shellCmd (pr.Cmd.Replace("\\","\\\\")),
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true )
-            |> P.Start
+            let s = si pr.Cmd
+            s.RedirectStandardInput <- true
+            s.RedirectStandardOutput <- true
+            s.RedirectStandardError <- true
+            P.Start s
 
         Files.write pidFile (string p.Id)
 
         [ pipeOutput p p.StandardOutput
           pipeOutput p p.StandardError
-          waitForStopSignal p ]
+          waitForStopSignal pr.Kill p ]
         |> Async.Parallel
         |> Async.RunSynchronously
         |> ignore
